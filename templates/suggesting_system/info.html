@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+</head>
+<body>
+
+<div>
+</div>
+<div>
+    {% for val in all %}
+        <br><a href="http://127.0.0.1:8000/user/{{ val.id }}">{{ val.name }}</a>
+        <br>{{ val.city }}
+    {% empty %}
+        <br>Not found
+    {% endfor %}
+    {{ info }}
+</div>
+</body>
+</html>
