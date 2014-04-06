@@ -1,17 +1,15 @@
-from django.forms import Form, ModelForm
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import RequestContext, loader
-from django import forms
-from lib.DocReader import DocReader
-from lib.tfidf import tfidf
-from lib.hhAPI import hhAPI
 from lib.HTMLData import HTMLData
-from lib.JSONParser import JSONParser
+
 
 # Create your views here.
 from suggesting_system.models import User, UserForm, UploadFileForm
 from lib.DocParser import Document
+from lib.EduStandartsParser import EduStandartsParser
+from lib.HTMLParser import HTMLParser
+from lib.hhAPI import hhAPI
 
 def index(request):
 	return render(request, "suggesting_system/index.html")
@@ -28,10 +26,18 @@ def info(request):
 def user(request, _id):
 	template = loader.get_template('suggesting_system/user.html')
 	FindedUser = User.objects.get(id = _id)
+	hhapi = hhAPI(FindedUser)
+	info = hhapi.CreateQuery()
+	# print (len(info))
+	# items = info['items']
+	# for item in items:
+	# 	print (item['name'])
+	# 	print (item['employer']['name'])
 	#tfresult = tfidf.tf('интеграл', DocReader.Reader(FindedUser.resumeField._get_path()))
-	info = Document(FindedUser.resumeField._get_path())
+	#info = Document(FindedUser.resumeField._get_path())
+	info  = hhapi.tmptext.zone_list
 	#parm = hhAPI.get_data_from_user_model(FindedUser)
-	context = RequestContext(request, {'FindedUser': FindedUser, "info": info.DocTermList[0][1]})
+	context = RequestContext(request, {'FindedUser': FindedUser, "info": info})
 	return HttpResponse(template.render(context))
 
 def form(request):

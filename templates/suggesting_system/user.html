@@ -7,7 +7,10 @@
     <div>
 	    <br>Имя: {{ FindedUser.name }}
 	    <br>Город: {{ FindedUser.city }}
-        <br>INF: {{ info }}
+        {% for val in info %}
+            <br>INF: {{ val.zone_raw_text }}
+        {% endfor %}
+
     </div>
 </body>
 </html>

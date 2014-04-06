@@ -1,5 +1,4 @@
 from Diplom import morph
-import re
 
 class tfidf: #TODO упростить использование
 
