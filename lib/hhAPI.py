@@ -2,6 +2,8 @@ from lib.JSONParser import JSONParser
 from lib.HTMLData import HTMLData
 from urllib.parse import quote
 from lib.DocParser import Document
+from lib.tfidf import tfidf
+from Diplom import SpecializationDict
 
 class hhAPI:
 
@@ -14,19 +16,19 @@ class hhAPI:
 	experience = 0 #опыт работы
 	schedule = 0 #график работы
 	city = ""
-	specializationId = 0
+	specializationIdList = []
+	importantSpecializations = []
 	freetext = ""
 	tmptext = ""
-
 
 	def __init__(self, user):
 		self.city = user.city
 		self.freetext = "программирование"
+		self.tmptext = None
 		self.tmptext = Document(user.resumeField._get_path())
-		self.SpecializationDict = self.getDictionary("https://api.hh.ru/specializations")
+		self.SpecializationDict = SpecializationDict
 		self.getSpecializationUserList()
-
-
+		self.importantSpecializations = self.GetImportantSpecializations(self.specializationIdList)
 
 #тестовая задача: получить вакансии используя модельки
 
@@ -54,10 +56,6 @@ class hhAPI:
 			#return data[4]['areas'][12]['areas'][0]['id']
 			return 1
 
-	def RetrieveInfoFromText(self):
-		for zone in self.tmptext:
-			pass
-
 	def CreateQuery(self, buildData=None):
 		if buildData is not None:
 			data = hhAPI.getCityCode(buildData.city, JSONParser.Parse(HTMLData.getStringHTMLData('https://api.hh.ru/areas', 'utf-8')))
@@ -66,10 +64,16 @@ class hhAPI:
 		else:
 			data = hhAPI.getCityCode(self.city, JSONParser.Parse(HTMLData.getStringHTMLData('https://api.hh.ru/areas', 'utf-8')))
 			print("city code = " + str(data))
-			link = "https://api.hh.ru/vacancies?text=" + quote("программирование") + "&area=" + str(data)
-			print (link)
+			link = "https://api.hh.ru/vacancies?specialization="
+			for spec in self.specializationIdList[:-1]:
+				if spec.split(".")[0] in self.importantSpecializations:
+					link += spec + "&specialization="
+			link += self.specializationIdList[-1]
+			link += "&area=" + str(data)
 		#data = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8'))
+		print(link)
 		res = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8'))
+		self.printVacancy(self.ParseVacancyResponce(res['items']))
 		return res
 
 	def getPossibleEdulevels(self):
@@ -79,23 +83,100 @@ class hhAPI:
 			result.append(val['name'])
 		return result
 
-	def getDictionary(self, link):
+	@staticmethod
+	def getDictionary(link):
 		return JSONParser.Parse(HTMLData.getStringHTMLData(link, "utf-8"))
 
-	def getSpecialization(self, name=None):
-		data = self.SpecializationDict
-		for val in data:
-			for val2 in val['specializations']:
-				clearvalue = Document.ParseWord(val2['name'])
-				if name is not None and name in clearvalue:
-					return val2['id']
-				else: continue
+	def getSpecialization(self, specdict, name=None):
+		keys = specdict.keys()
+		for key in keys:
+			if Document.CompareStrings(name, specdict[key].split(' ')):
+				# print(specdict.get(key))
+				print(key)
+				#return key
+				return key
 		return None
 
-	def getSpecializationUserList(self):
+	class Vacancy:
+		name = ""
+		company_name = ""
+		vacancy_url = ""
+		salary = 0
+
+		def __init__(self, name, company_name, vacancy_url, salary=0):
+			self.name = name
+			self.company_name = company_name
+			self.vacancy_url = vacancy_url
+			self.salary = salary
+
+
+	def ParseVacancyResponce(self, JSONAllVacancyData):
+		result = []
+		for item in JSONAllVacancyData:
+			result.append(self.Vacancy(item['name'], item['employer']['name'], item['url']))
+		return result
+
+	def printVacancy(self, vacancyList):
+		for item in vacancyList:
+			# print("название вакансии: " + item.name)
+			# print("название компании: " + item.company_name)
+			# print("ссылка: " + item.vacancy_url)
+			# print("зарплата: " + str(item.salary))
+			pass
+
+	@staticmethod
+	def ProceedSpecList(SpecDict=None): #возвращает словарь специализаций
+		names = []
+		ids = []
+		for val in SpecDict:
+			for val2 in val['specializations']:
+				names.append(Document.ParseWord(val2['name']))
+				ids.append(val2['id'])
+		return dict(zip(ids, names))
+
+	def getSpecializationUserList(self):    #сопоставляет специализацию и резюме
+		i = 0
+		self.specializationIdList = []
+		specdict = self.ProceedSpecList(self.SpecializationDict)
 		for zone in self.tmptext.zone_list:
-			for word in zone.zone_raw_text.split(" "):
-				res = self.getSpecialization(word)
+			tfrestmp = tfidf.WordCount.get_term_one_list(tfidf.WordCount.map(zone.zone_raw_text))
+			for val in tfrestmp:
+				res = self.getSpecialization(specdict, val[0])
 				if res is not None:
-					self.specializationId = res
-					print("spec id = " + self.specializationId)
+					i += 1
+					#print("res = " + specdict[res])
+					self.specializationIdList.append(res)
+					if i > 20: break
+		self.GetImportantSpecializations(self.specializationIdList)
+
+	def GetImportantSpecializations(self, keyList):     #считает количество каждой специализации и возвращает самые подходящие
+		SingleSpecCount = [0] * len(keyList)
+		SpecIdList = []
+		result = []
+		for i in range(len(keyList)):
+			splittedVal = keyList[i].split(".")[0]
+			if splittedVal in SpecIdList:
+				SingleSpecCount[SpecIdList.index(splittedVal)] += 1
+			else:
+				SpecIdList.append(splittedVal)
+		sortedList = sorted(dict(zip(SpecIdList, SingleSpecCount)).items(), key=lambda x: x[1], reverse=True)
+		print(sortedList)
+		maxVal = sortedList[0][1]
+		result.append(sortedList[0][0])
+		if maxVal > 7:      #коэффициенты приоритетности остальных специальностей, относительно наиболее приоритетной
+			priorityVal = 3
+		else:
+			if 4 > maxVal <= 7:
+				priorityVal = 2
+			else:
+				priorityVal = 1
+		print (maxVal)
+		print("priority val = " + str(priorityVal))
+		for sortedVal in sortedList[1:]:
+			checkPriorityResult = maxVal / priorityVal
+			if checkPriorityResult == 0:
+				return result
+			if sortedVal[1] >= checkPriorityResult:
+				result.append(sortedVal[0])
+		print(result)
+		return result

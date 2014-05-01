@@ -6,11 +6,11 @@ from django.db.models.base import Model
 from django.forms import ModelForm
 
 class User(models.Model):
-    name = models.CharField(max_length=30)
-    city = models.CharField(max_length=30)
-    resumeField = models.FileField(upload_to='resume')
-    #files = models.ForeignKey(UploadedFiles, blank=True, null=True)
-    #file = models.FileField(upload_to='folder')
+	name = models.CharField(max_length=30)
+	city = models.CharField(max_length=30)
+	resumeField = models.FileField(upload_to='resume')
+	#files = models.ForeignKey(UploadedFiles, blank=True, null=True)
+	#file = models.FileField(upload_to='folder')
 
 class UploadedFiles(models.Model):
 	file = models.FileField(upload_to='folder')
@@ -27,5 +27,5 @@ class UploadFileForm(ModelForm):
 		fields = ['file']
 
 class Vacancy(models.Model):
-    text = models.CharField(max_length=10000)
+	text = models.CharField(max_length=10000)
 

@@ -37,7 +37,7 @@ class Document:
 			if val.zone_type is not None:
 				pass
 				#print ("zone name = " + val.zone_type)
-			#print(val.zone_raw_text)
+			print(val.zone_raw_text)
 			print("end zone===========")
 
 	def ParseResume(self):
@@ -58,15 +58,20 @@ class Document:
 	@staticmethod
 	def ParseWord(word):
 		splitted = word.split(' ')
-		word_list_norm = []
 		word_str_norm = ""
 		for val in splitted:
 			w = morph.parse(val)
-			#print("test = " + val)
 			if len(w) > 0:
 				result = w[0]
 				if ("NOUN" or "ADJF" or "VERB" in result.tag) and len(result.normal_form) > 2:
-					word_list_norm.append(result.normal_form + ' ')
 					word_str_norm += result.normal_form + ' '
 		return word_str_norm
+
+	@staticmethod
+	def CompareStrings(word, string):
+		for val in string:
+			if word == val:
+				return True
+		return False
+
 #должен этой функцией корректно разделить резюме на составные части

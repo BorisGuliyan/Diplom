@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import RequestContext, loader
 from lib.HTMLData import HTMLData
+from lib.Competitions import Competition
 
 
 # Create your views here.
@@ -17,9 +18,9 @@ def index(request):
 def info(request):
 	template = loader.get_template('suggesting_system/info.html')
 
-	all = User.objects.all()
+	allobj = User.objects.all()
 	#info = hhAPI.CreateQuery(hhAPI.getCityCode(something.city))
-	context = RequestContext(request, {'all': all, 'info': info})
+	context = RequestContext(request, {'all': allobj, 'info': info})
 
 	return HttpResponse(template.render(context))
 
@@ -28,14 +29,10 @@ def user(request, _id):
 	FindedUser = User.objects.get(id = _id)
 	hhapi = hhAPI(FindedUser)
 	info = hhapi.CreateQuery()
-	# print (len(info))
-	# items = info['items']
-	# for item in items:
-	# 	print (item['name'])
-	# 	print (item['employer']['name'])
-	#tfresult = tfidf.tf('интеграл', DocReader.Reader(FindedUser.resumeField._get_path()))
+
+	#info = Competition("test", ["course1", "course2"], ["c", "c++"], ["soft1", "soft2", "soft3"], None)
 	#info = Document(FindedUser.resumeField._get_path())
-	info  = hhapi.tmptext.zone_list
+	#tmp = EduStandartsParser.printresult()
 	#parm = hhAPI.get_data_from_user_model(FindedUser)
 	context = RequestContext(request, {'FindedUser': FindedUser, "info": info})
 	return HttpResponse(template.render(context))

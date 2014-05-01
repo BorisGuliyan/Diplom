@@ -7,8 +7,12 @@
     <div>
 	    <br>Имя: {{ FindedUser.name }}
 	    <br>Город: {{ FindedUser.city }}
-        {% for val in info %}
-            <br>INF: {{ val.zone_raw_text }}
+{#        {% for val in info %}#}
+{#            <br>INF: {{ val.zone_raw_text }}#}
+{#        {% endfor %}#}
+        {{ info }}
+        {% for val in info.professions %}
+            <br>Prof = {{ val.name }}
         {% endfor %}
 
     </div>

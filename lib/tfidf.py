@@ -9,9 +9,9 @@ class tfidf: #TODO упростить использование
 		@classmethod
 		def wordFilter(self, word):
 			#word = re.sub("[?.!/;:|/\\,*()&^%$#@{}[]'<>]?", '', word)
-			if len(word) < 2 or (word.islower() and len(word) < 4) or word.isdigit():
+			if len(word) < 2 or word.isdigit():
 				return False
-			else:   return True
+			else: return True
 
 		@classmethod
 		def Tokenaizer(self, text):
@@ -64,6 +64,9 @@ class tfidf: #TODO упростить использование
 			return tfidf.WordCount.get_term_one_list(tfidf.WordCount.map(text))[word] / self.doc_lenght
 		except KeyError:
 			return "Key not found"
+
+	def idf(self, word, doc_count):
+		pass
 
 #f = open('text.txt', 'r')
 #text = f.read()
