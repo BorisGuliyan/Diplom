@@ -9,3 +9,5 @@ morph = pymorphy2.MorphAnalyzer()
 SpecializationDict = None
 SpecializationDict = JSONParser.Parse(HTMLData.getStringHTMLData("https://api.hh.ru/specializations", "utf-8"))
 #EduStandartsParser.GetHTML()
+commonLangs = ["c", "c++", "ruby", "python", "javascript", "java", "c#", "f#", "css", "objective-c", "go", "shell", "perl",
+	               "php", "lisp", "haskell", "pascal", "assembly", "scala", "sql", "с++"]

@@ -6,21 +6,22 @@ class tfidf: #TODO упростить использование
 
 	class WordCount:
 
-		@classmethod
-		def wordFilter(self, word):
+		@staticmethod
+		def wordFilter(word):
 			#word = re.sub("[?.!/;:|/\\,*()&^%$#@{}[]'<>]?", '', word)
 			if len(word) < 2 or word.isdigit():
 				return False
 			else: return True
 
-		@classmethod
-		def Tokenaizer(self, text):
+		@staticmethod
+		def Tokenaizer(text):
 			res = []
 			for line in text.split('\n'):
-				for word in line.split(' '):
-					w = morph.parse(word)
-					if len(w) > 0 and self.wordFilter(word):
-						res.append(w[0].normal_form)
+				for wordParsed in line.split(' '):
+					#TODO перписать на регулярки
+					wordParsed = tfidf.ParseWord(wordParsed.replace("\r", '').replace("«", '').replace("»", '').replace(".", '').replace(",", ''))
+					if wordParsed != '' and len(wordParsed) > 0 and tfidf.WordCount.wordFilter(wordParsed):
+						res.append(wordParsed)
 			tfidf.doc_lenght = len(res)
 			return res
 
@@ -67,6 +68,16 @@ class tfidf: #TODO упростить использование
 
 	def idf(self, word, doc_count):
 		pass
+
+	@staticmethod
+	def ParseWord(word):
+		if len(word) > 2:
+			w = morph.parse(word)
+			if w != []:
+				result = w[0]
+				if ("NOUN" or "ADJF" or "VERB" in result.tag) and len(result.normal_form) > 2:
+					return result.normal_form
+		return ''
 
 #f = open('text.txt', 'r')
 #text = f.read()

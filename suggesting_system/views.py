@@ -1,3 +1,4 @@
+import urllib
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import RequestContext, loader
@@ -11,6 +12,11 @@ from lib.DocParser import Document
 from lib.EduStandartsParser import EduStandartsParser
 from lib.HTMLParser import HTMLParser
 from lib.hhAPI import hhAPI
+from lib.DocReader import DocReader
+from lib.GitHubAPI import GitHubAPI
+from lib.NMF import NMF
+import numpy as np
+from numpy import *
 
 def index(request):
 	return render(request, "suggesting_system/index.html")
@@ -28,7 +34,22 @@ def user(request, _id):
 	template = loader.get_template('suggesting_system/user.html')
 	FindedUser = User.objects.get(id = _id)
 	hhapi = hhAPI(FindedUser)
+	#info = DocReader.ReadManyFiles(["C://Boris//Учеба//Курсовая.doc", "C://Boris//Учеба//Diplom//mess.doc", ])
+	#
+	# l1 = [[1, 2], [1, 2], [1, 2]]
+	# l2 = [[2, 2, 5], [2, 2, 7]]
+	#
+	# m1 = matrix(l1)
+	# m2 = matrix(l2)
+	#
+	# #print(m1 * m2)
+	# tmp = NMF.calculate(m1 * m2)
+	#
+	# print(tmp)
 	info = hhapi.CreateQuery()
+	tmp = NMF.ConvertData(hhapi.docdict, hhapi.tmptext)
+
+
 
 	#info = Competition("test", ["course1", "course2"], ["c", "c++"], ["soft1", "soft2", "soft3"], None)
 	#info = Document(FindedUser.resumeField._get_path())

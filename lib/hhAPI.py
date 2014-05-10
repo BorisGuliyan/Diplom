@@ -4,6 +4,9 @@ from urllib.parse import quote
 from lib.DocParser import Document
 from lib.tfidf import tfidf
 from Diplom import SpecializationDict
+from lib.DocReader import DocReader
+from suggesting_system.models import VacancyCache
+from django.core.exceptions import ObjectDoesNotExist
 
 class hhAPI:
 
@@ -11,23 +14,27 @@ class hhAPI:
 
 	#parameters
 	education = ""
-	gender = 0 #пол 0-М 1-Ж
-	employment = 0 #тип занятости
-	experience = 0 #опыт работы
 	schedule = 0 #график работы
 	city = ""
 	specializationIdList = []
 	importantSpecializations = []
+	progLangs = set([])
 	freetext = ""
 	tmptext = ""
+	documents = None
+	docdict = None
 
 	def __init__(self, user):
 		self.city = user.city
 		self.freetext = "программирование"
 		self.tmptext = None
-		self.tmptext = Document(user.resumeField._get_path())
+		#self.tmptext = Document(None, DocReader.ReadManyFiles(["C://Boris//Учеба//Курсовая.doc", "C://Boris//Учеба//Diplom//mess.doc", user.resumeField._get_path()]))
+		text =  DocReader.ReadManyFiles(["C://Boris//Учеба//Diplom//mess.doc", user.resumeField._get_path()])
+		self.documents = Document(None, text[0])
+		self.docdict = text[1]
+		self.tmptext = self.documents.ParsedText
 		self.SpecializationDict = SpecializationDict
-		self.getSpecializationUserList()
+		self.getSpecializationUserListByText()
 		self.importantSpecializations = self.GetImportantSpecializations(self.specializationIdList)
 
 #тестовая задача: получить вакансии используя модельки
@@ -55,25 +62,28 @@ class hhAPI:
 		if city == "москва" or city == "Москва":
 			#return data[4]['areas'][12]['areas'][0]['id']
 			return 1
+		return 1
 
 	def CreateQuery(self, buildData=None):
-		if buildData is not None:
-			data = hhAPI.getCityCode(buildData.city, JSONParser.Parse(HTMLData.getStringHTMLData('https://api.hh.ru/areas', 'utf-8')))
-			link = "https://api.hh.ru/vacancies?text=" + quote("программирование") + "&area=" + str(data)
-			print (link)
-		else:
-			data = hhAPI.getCityCode(self.city, JSONParser.Parse(HTMLData.getStringHTMLData('https://api.hh.ru/areas', 'utf-8')))
-			print("city code = " + str(data))
-			link = "https://api.hh.ru/vacancies?specialization="
-			for spec in self.specializationIdList[:-1]:
-				if spec.split(".")[0] in self.importantSpecializations:
-					link += spec + "&specialization="
-			link += self.specializationIdList[-1]
-			link += "&area=" + str(data)
-		#data = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8'))
-		print(link)
+		data = hhAPI.getCityCode(self.city, JSONParser.Parse(HTMLData.getStringHTMLData('https://api.hh.ru/areas', 'utf-8')))
+		print("city code = " + str(data))
+		link = "https://api.hh.ru/vacancies?specialization="
+		for spec in self.specializationIdList[:-1]:
+			if spec.split(".")[0] in self.importantSpecializations:
+				link += spec + "&specialization="
+		link += self.specializationIdList[-1]
+		link += "&area=1"
+		print(self.progLangs)
+		if self.progLangs is not None:
+			link += "&text="
+			for lang in self.progLangs[0]:
+				link += lang + "%20or%20"
+			link = link[:-8]
+		link += "&per_page=200"
+		#print(link)
 		res = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8'))
-		self.printVacancy(self.ParseVacancyResponce(res['items']))
+		#print(res)
+		self.ReadManyVacancyes(res['items'])
 		return res
 
 	def getPossibleEdulevels(self):
@@ -92,29 +102,40 @@ class hhAPI:
 		for key in keys:
 			if Document.CompareStrings(name, specdict[key].split(' ')):
 				# print(specdict.get(key))
-				print(key)
+				# print(key)
 				#return key
 				return key
 		return None
 
-	class Vacancy:
-		name = ""
-		company_name = ""
-		vacancy_url = ""
-		salary = 0
-
-		def __init__(self, name, company_name, vacancy_url, salary=0):
-			self.name = name
-			self.company_name = company_name
-			self.vacancy_url = vacancy_url
-			self.salary = salary
-
-
-	def ParseVacancyResponce(self, JSONAllVacancyData):
+	def ReadManyVacancyes(self, JSONAllVacancyData):
 		result = []
+		count = 0
 		for item in JSONAllVacancyData:
-			result.append(self.Vacancy(item['name'], item['employer']['name'], item['url']))
+			count += 1
+			findedInCache = VacancyCache.objects.filter(vacancy_Id=item['url'].split("vacancies/")[1])
+			if len(findedInCache) == 0:
+				VacancyJson = JSONParser.Parse(HTMLData.getStringHTMLData(item['url'], 'utf-8'))
+				# print(VacancyJson['id'])
+				# print(VacancyJson)
+				vacancy = VacancyCache(name=VacancyJson['name'], description=VacancyJson['description'],
+				                       url=VacancyJson['alternate_url'],
+				                       company_name=VacancyJson['employer']['name'], salary_start=0,
+				                       salary_end=0, vacancy_Id=VacancyJson['id'])
+				self.SaveVacancyToDB(vacancy)
+				result.append(vacancy)
+			else:
+				result.append(findedInCache)
+			if count > 50:
+				break
+		# print(result)
 		return result
+
+	def SaveVacancyToDB(self, vacancy):
+		VacancyNew = vacancy
+		VacancyNew.save()
+
+	def PageWorking(self):
+		pass
 
 	def printVacancy(self, vacancyList):
 		for item in vacancyList:
@@ -122,6 +143,7 @@ class hhAPI:
 			# print("название компании: " + item.company_name)
 			# print("ссылка: " + item.vacancy_url)
 			# print("зарплата: " + str(item.salary))
+			# print("descr: " + item.description)
 			pass
 
 	@staticmethod
@@ -130,23 +152,45 @@ class hhAPI:
 		ids = []
 		for val in SpecDict:
 			for val2 in val['specializations']:
-				names.append(Document.ParseWord(val2['name']))
+				names.append(tfidf.ParseWord(val2['name']))
 				ids.append(val2['id'])
 		return dict(zip(ids, names))
 
-	def getSpecializationUserList(self):    #сопоставляет специализацию и резюме
+	# def getSpecializationUserList(self):    #сопоставляет специализацию и резюме
+	# 	i = 0
+	# 	self.specializationIdList = []
+	# 	progLangs = []
+	# 	specdict = self.ProceedSpecList(self.SpecializationDict)
+	# 	for zone in self.tmptext.zone_list:
+	# 		tfrestmp = tfidf.WordCount.get_term_one_list(tfidf.WordCount.map(zone.zone_raw_text))
+	# 		for val in tfrestmp:
+	# 			self.progLangs |= Document.GetProgLangsFromText(val[0])
+	# 			print(val[0])
+	# 			res = self.getSpecialization(specdict, val[0])
+	# 			if res is not None:
+	# 				i += 1
+	# 				self.specializationIdList.append(res)
+	# 				if i > 20: break
+	# 	self.GetImportantSpecializations(self.specializationIdList)
+
+	def getSpecializationUserListByText(self):    #сопоставляет специализацию и ЛЮБОЙ ТЕКСТ
 		i = 0
 		self.specializationIdList = []
 		specdict = self.ProceedSpecList(self.SpecializationDict)
-		for zone in self.tmptext.zone_list:
-			tfrestmp = tfidf.WordCount.get_term_one_list(tfidf.WordCount.map(zone.zone_raw_text))
-			for val in tfrestmp:
-				res = self.getSpecialization(specdict, val[0])
-				if res is not None:
-					i += 1
-					#print("res = " + specdict[res])
-					self.specializationIdList.append(res)
-					if i > 20: break
+		print("tmptext = ")
+		print(self.tmptext)
+		tfrestmp = tfidf.WordCount.get_term_one_list(tfidf.WordCount.map(self.tmptext))
+		langs = self.documents.DocProgLangs
+		self.progLangs = self.documents.DocProgLangs
+		print("langs = ")
+		print(langs)
+		for val in tfrestmp:
+			#self.progLangs |= Document.GetProgLangsFromText(val[0])
+			res = self.getSpecialization(specdict, val[0])
+			if res is not None:
+				i += 1
+				self.specializationIdList.append(res)
+				if i > 100: break
 		self.GetImportantSpecializations(self.specializationIdList)
 
 	def GetImportantSpecializations(self, keyList):     #считает количество каждой специализации и возвращает самые подходящие
@@ -160,7 +204,6 @@ class hhAPI:
 			else:
 				SpecIdList.append(splittedVal)
 		sortedList = sorted(dict(zip(SpecIdList, SingleSpecCount)).items(), key=lambda x: x[1], reverse=True)
-		print(sortedList)
 		maxVal = sortedList[0][1]
 		result.append(sortedList[0][0])
 		if maxVal > 7:      #коэффициенты приоритетности остальных специальностей, относительно наиболее приоритетной
@@ -170,13 +213,10 @@ class hhAPI:
 				priorityVal = 2
 			else:
 				priorityVal = 1
-		print (maxVal)
-		print("priority val = " + str(priorityVal))
 		for sortedVal in sortedList[1:]:
 			checkPriorityResult = maxVal / priorityVal
 			if checkPriorityResult == 0:
 				return result
 			if sortedVal[1] >= checkPriorityResult:
 				result.append(sortedVal[0])
-		print(result)
 		return result
