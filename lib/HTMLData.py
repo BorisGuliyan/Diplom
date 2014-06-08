@@ -4,8 +4,6 @@ import urllib
 from urllib import request
 
 class HTMLData:
-	bdata = ''
-	sdata = ''
 
 	@staticmethod
 	def getByteHTMLData(url):

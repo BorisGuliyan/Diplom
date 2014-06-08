@@ -1,5 +1,5 @@
-import bs4
-from bs4 import BeautifulSoup
+# import bs4
+# from bs4 import BeautifulSoup
 
 class HTMLParser:
 
@@ -9,7 +9,8 @@ class HTMLParser:
 
 	@staticmethod
 	def initSoup(HTMLDataFile):
-		return BeautifulSoup(open(HTMLDataFile))
+		return None
+		# return BeautifulSoup(open(HTMLDataFile))
 
 	@staticmethod
 	def GetDataFromTag(TagName, soup):

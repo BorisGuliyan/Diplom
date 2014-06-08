@@ -1,12 +1,11 @@
 from lib.JSONParser import JSONParser
 from lib.HTMLData import HTMLData
-from urllib.parse import quote
 from lib.DocParser import Document
 from lib.tfidf import tfidf
 from Diplom import SpecializationDict
 from lib.DocReader import DocReader
 from suggesting_system.models import VacancyCache
-from django.core.exceptions import ObjectDoesNotExist
+from lib.tfidf import WordCount
 
 class hhAPI:
 
@@ -29,9 +28,10 @@ class hhAPI:
 		self.freetext = "программирование"
 		self.tmptext = None
 		#self.tmptext = Document(None, DocReader.ReadManyFiles(["C://Boris//Учеба//Курсовая.doc", "C://Boris//Учеба//Diplom//mess.doc", user.resumeField._get_path()]))
-		text =  DocReader.ReadManyFiles(["C://Boris//Учеба//Diplom//mess.doc", user.resumeField._get_path()])
+		text = DocReader.ReadManyFiles([user.resumeField._get_path(), "D://Boris//Учеба//Diplom//mess.doc"])
 		self.documents = Document(None, text[0])
 		self.docdict = text[1]
+		# print(self.docdict)
 		self.tmptext = self.documents.ParsedText
 		self.SpecializationDict = SpecializationDict
 		self.getSpecializationUserListByText()
@@ -66,24 +66,30 @@ class hhAPI:
 
 	def CreateQuery(self, buildData=None):
 		data = hhAPI.getCityCode(self.city, JSONParser.Parse(HTMLData.getStringHTMLData('https://api.hh.ru/areas', 'utf-8')))
-		print("city code = " + str(data))
 		link = "https://api.hh.ru/vacancies?specialization="
 		for spec in self.specializationIdList[:-1]:
 			if spec.split(".")[0] in self.importantSpecializations:
 				link += spec + "&specialization="
 		link += self.specializationIdList[-1]
 		link += "&area=1"
-		print(self.progLangs)
+		print(buildData)
+		if buildData is not None:
+			print("self.progLangs union = ")
+			print(self.progLangs[0].union(buildData))
+		else:
+			print("self.progLangs = ")
+			print(self.progLangs)
 		if self.progLangs is not None:
 			link += "&text="
 			for lang in self.progLangs[0]:
 				link += lang + "%20or%20"
 			link = link[:-8]
 		link += "&per_page=200"
-		#print(link)
+		print(link)
 		res = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8'))
 		#print(res)
-		self.ReadManyVacancyes(res['items'])
+		print("result len = " + str(res['found']))
+		res = self.ReadManyVacancyes(res['items'])
 		return res
 
 	def getPossibleEdulevels(self):
@@ -111,23 +117,30 @@ class hhAPI:
 		result = []
 		count = 0
 		for item in JSONAllVacancyData:
+			# print(item)
 			count += 1
 			findedInCache = VacancyCache.objects.filter(vacancy_Id=item['url'].split("vacancies/")[1])
 			if len(findedInCache) == 0:
 				VacancyJson = JSONParser.Parse(HTMLData.getStringHTMLData(item['url'], 'utf-8'))
-				# print(VacancyJson['id'])
-				# print(VacancyJson)
-				vacancy = VacancyCache(name=VacancyJson['name'], description=VacancyJson['description'],
-				                       url=VacancyJson['alternate_url'],
-				                       company_name=VacancyJson['employer']['name'], salary_start=0,
-				                       salary_end=0, vacancy_Id=VacancyJson['id'])
-				self.SaveVacancyToDB(vacancy)
-				result.append(vacancy)
+				if VacancyJson['salary'] is not None and VacancyJson['salary']['to'] != None and VacancyJson['salary']['from'] != None:
+					vacancy = VacancyCache(name=VacancyJson['name'], description=VacancyJson['description'],
+					                       url=VacancyJson['alternate_url'],
+					                       company_name=VacancyJson['employer']['name'], salary_start=VacancyJson['salary']['from'],
+					                       salary_end=VacancyJson['salary']['to'], vacancy_Id=VacancyJson['id'])
+					self.SaveVacancyToDB(vacancy)
+					result.append(vacancy)
+				else:
+					vacancy = VacancyCache(name=VacancyJson['name'], description=VacancyJson['description'],
+					                       url=VacancyJson['alternate_url'],
+					                       company_name=VacancyJson['employer']['name'], salary_start=0,
+					                       salary_end=0, vacancy_Id=VacancyJson['id'])
+					self.SaveVacancyToDB(vacancy)
+					result.append(vacancy)
 			else:
-				result.append(findedInCache)
-			if count > 50:
+				result.append(findedInCache[0])
+			if count > 100:
 				break
-		# print(result)
+		# print(len(result))
 		return result
 
 	def SaveVacancyToDB(self, vacancy):
@@ -177,13 +190,10 @@ class hhAPI:
 		i = 0
 		self.specializationIdList = []
 		specdict = self.ProceedSpecList(self.SpecializationDict)
-		print("tmptext = ")
-		print(self.tmptext)
-		tfrestmp = tfidf.WordCount.get_term_one_list(tfidf.WordCount.map(self.tmptext))
-		langs = self.documents.DocProgLangs
+
+		tfrestmp = WordCount.get_term_one_list(WordCount.map(self.tmptext))[0]
+		# langs = self.documents.DocProgLangs
 		self.progLangs = self.documents.DocProgLangs
-		print("langs = ")
-		print(langs)
 		for val in tfrestmp:
 			#self.progLangs |= Document.GetProgLangsFromText(val[0])
 			res = self.getSpecialization(specdict, val[0])

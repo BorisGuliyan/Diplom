@@ -4,10 +4,12 @@ from django.core.files import File
 # Create your models here.
 from django.db.models.base import Model
 from django.forms import ModelForm
+from django.forms import forms
 
 class User(models.Model):
 	name = models.CharField(max_length=30)
 	city = models.CharField(max_length=30)
+	gitHub = models.CharField(max_length=20, blank=True)
 	resumeField = models.FileField(upload_to='resume')
 	#files = models.ForeignKey(UploadedFiles, blank=True, null=True)
 	#file = models.FileField(upload_to='folder')
@@ -25,15 +27,20 @@ class VacancyCache(models.Model):
 	salary_end = models.IntegerField()
 	vacancy_Id = models.IntegerField()
 
+
 class UserForm(ModelForm):
 	class Meta:
 		model = User
-		fields = ['name', 'city', 'resumeField']
+		fields = ['name', 'city', 'gitHub', 'resumeField']
+
+
+# "form-control"
 
 class UploadFileForm(ModelForm):
 	class Meta:
 		model = UploadedFiles
 		fields = ['file']
+
 
 class Vacancy(models.Model):
 	text = models.CharField(max_length=10000)

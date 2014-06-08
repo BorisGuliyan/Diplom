@@ -1,5 +1,6 @@
 from lib.DocReader import DocReader
 from lib.tfidf import tfidf
+from lib.tfidf import WordCount
 from Diplom import commonLangs
 
 class Document:
@@ -34,11 +35,12 @@ class Document:
 		if text is None:
 			self.DocPath = DocPath
 			self.DocText = DocReader.Reader(self.DocPath)
-			self.DocTermList = tfidf.WordCount.get_term_one_list(tfidf.WordCount.map(self.DocText))
+			tfres = WordCount.get_term_one_list(WordCount.map(self.DocText))
+			self.DocTermList = tfres
 			self.ParseResume()
 		else:
 			self.DocText = text
-			self.DocTermList = tfidf.WordCount.get_term_one_list(tfidf.WordCount.map(self.DocText))
+			self.DocTermList = WordCount.get_term_one_list(WordCount.map(self.DocText))
 			print(self.DocTermList)
 			self.ParseText()
 			self.ParseResume()
@@ -72,7 +74,7 @@ class Document:
 				i += 1
 				continue
 			self.zone_list[i].zone_raw_text += tfidf.ParseWord(changed_val)
-		self.DocProgLangs.append(Document.GetProgLangsFromText(self.DocTermList))
+		self.DocProgLangs.append(Document.GetProgLangsFromText(self.DocTermList[0]))
 
 	@staticmethod
 	def CompareStrings(word, string):

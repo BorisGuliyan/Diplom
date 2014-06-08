@@ -1,7 +1,7 @@
 from lib.HTMLData import HTMLData
 from lib.HTMLParser import HTMLParser
-import bs4
-from bs4 import BeautifulSoup
+# import bs4
+# from bs4 import BeautifulSoup
 
 class EduStandartsParser:
 

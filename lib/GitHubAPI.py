@@ -9,8 +9,13 @@ class GitHubAPI:
 
 	@staticmethod
 	def GetJSONByUserName(UserName):
+		res = None
 		link = "https://api.github.com/users/" + UserName + "/repos"
-		res = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8'))
+		# print(link)
+		try:
+			res = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8'))
+		except:
+			print("wrong git hub url, ignoring")
 		return res
 
 	@staticmethod
@@ -18,12 +23,15 @@ class GitHubAPI:
 		languagesLinks = []
 		languagesNames = []
 		ReposJSON = GitHubAPI.GetJSONByUserName(UserName)
-		for val in ReposJSON:
-			languagesLinks.append(val['languages_url'])
-		for link in languagesLinks:     #TODO may be sloooowwwww
-			keysList = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8')).keys()   #слишком медленно работает
-			for lang in keysList:
-				if lang in commonLangs:
-					languagesNames.append(lang.lower())
-		print(set(languagesNames))
+		if ReposJSON is not None:
+			for val in ReposJSON:
+				languagesLinks.append(val['languages_url'])
+			for link in languagesLinks:     #TODO may be sloooowwwww
+				keysList = JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8')).keys()   #слишком медленно работает
+				for lang in keysList:
+					# print(lang)
+					if lang.lower() in commonLangs:
+						languagesNames.append(lang.lower())
+			# print(set(languagesNames))
+		return set(languagesNames)
 			#languagesNames.append(JSONParser.Parse(HTMLData.getStringHTMLData(link, 'utf-8')))
